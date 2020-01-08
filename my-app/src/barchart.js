@@ -261,7 +261,7 @@ class Barchart extends React.Component {
                         <TableHead>
                             <TableRow>
                                 <TableCell>Date</TableCell>
-                                <TableCell>Name</TableCell>
+                                <TableCell>Name</TableCell
                                 <TableCell>Amount</TableCell>
                                 <TableCell>Category</TableCell>
                             </TableRow>
