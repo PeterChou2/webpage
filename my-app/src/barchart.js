@@ -36,6 +36,8 @@ class Barchart extends React.Component {
         this.state = {chartstate: 'bar', // the state of the chart whether it is in bar format or pie format
                       masterdata: null, // master data is never modify
                       displaydata: null, // the data being physically display
+                      displaydataformated: null, // the display data formated for nested purposes
+                      tabledetails: null, //table details panel for formatting
                       //filterfn: null,
                       showbutton: true, // boolean tracking whether the top 4 button (transaction, daily etc) is shown
                       chart: null, // barchart
@@ -46,6 +48,20 @@ class Barchart extends React.Component {
                       anchorEl: null,
                       startdate: moment(),
                       enddate: moment(),
+                      defaulttableheader: [
+                          { title: 'Date', field: 'date',
+                          },
+                          { title: 'Name', field: 'name'},
+                          { title: 'Amount', field: 'amount'},
+                          { title: 'Category', field: 'category'}
+                      ],
+                      tableheader: [
+                          { title: 'Date', field: 'date',
+                          },
+                          { title: 'Name', field: 'name'},
+                          { title: 'Amount', field: 'amount'},
+                          { title: 'Category', field: 'category'}
+                      ],
                       sortByLabel: "Chronological"
         };
     }
@@ -75,7 +91,18 @@ class Barchart extends React.Component {
                              piechart: pchart,
                              level: barchartlevels.bytransaction,
                              masterdata: financial.transactions.filter(d => d.amount > 0),
-                             displaydata: financial.transactions.filter(d => d.amount > 0),
+                             displaydata: financial.transactions.filter(d => d.amount > 0).map(function(d){
+                                 return {'date': d.date,
+                                         'name': d.name,
+                                         'amount' : d.amount,
+                                         'category' : d.category[0]}
+                             }),
+                             displaydataformated: financial.transactions.filter(d => d.amount > 0).map(function(d){
+                                 return {'date': d.date,
+                                     'name': d.name,
+                                     'amount' : d.amount,
+                                     'category' : d.category[0]}
+                             }),
                              startdate: startdate,
                              enddate: enddate,
                              dateRange: startdate.format('MM/DD/YYYY') + ' - ' + enddate.format('MM/DD/YYYY')
@@ -83,8 +110,59 @@ class Barchart extends React.Component {
     }
 
     handleClick(level){
-        this.setState({level: level});
-        console.log(this.state.level);
+        this.setState({level: level,
+                             //reformat display data
+                             displaydataformated: level.code !== 0 ? d3.nest()
+                                             .key(level.callback)
+                                             .rollup(function(v){
+                                                return {
+                                                    data: v,
+                                                    sum: d3.sum(v, d => d.amount)
+                                             }})
+                                             .entries(this.state.displaydata)
+                                             .map(d => ({
+                                                 'key': d.key,
+                                                 'sum': d.value.sum,
+                                                 'data': d.value.data
+                                             })) : this.state.displaydata,
+                             tableheader: level.code !== 0 ? [
+                                 {title: "Time", field : "key"},
+                                 {title: "Sum",  field : "sum"}]
+                                 : this.state.defaulttableheader,
+                             tabledetails: level.code !== 0 ? [{
+                                 tooltip: 'Expand',
+                                 render: function(rowData){
+                                     return (
+                                         <MaterialTable
+                                             columns={[
+                                                 { title: 'Date', field: 'date',
+                                                 },
+                                                 { title: 'Name', field: 'name'},
+                                                 { title: 'Amount', field: 'amount'},
+                                                 { title: 'Category', field: 'category'}
+                                             ]}
+                                             data={rowData.data}
+                                             options={{search: false,
+                                                       toolbar: false}}
+                                         />)
+                                 }}] : null
+
+        });
+        console.log("displaydata");
+        console.log(this.state);
+        console.log(level.code !== 0 ? d3.nest()
+            .key(level.callback)
+            .rollup(function(v){
+                return {
+                    data: v,
+                    sum: d3.sum(v, d => d.amount)
+                }})
+            .entries(this.state.displaydata)
+            .map(d => ({
+                'key': d.key,
+                'sum': d.value.sum,
+                'data': d.value.data
+            })) : this.displaydata)
     }
 
     handleChangePage(event, newpage){
@@ -229,30 +307,14 @@ class Barchart extends React.Component {
                         </div>
                         <div>
                             <MaterialTable
-                                columns={[
-                                    { title: 'Date', field: 'date',
-                                    },
-                                    { title: 'Name', field: 'name'},
-                                    { title: 'Amount', field: 'amount'},
-                                    { title: 'Category', field: 'category'}
-                                ]}
-                                data={this.state.chart ?
-                                      this.state.displaydata.map(function(d){
-                                          return {'date': d.date,
-                                                  'name': d.name,
-                                                  'amount' : d.amount,
-                                                  'category' : d.category[0]}
-                                      }) : null}
-                                options={{actionsColumnIndex: 2}}
+                                columns={this.state.tableheader}
+                                data={this.state.chart ? this.state.displaydataformated : null}
                                 actions={[{
                                             icon: () => daterange,
                                             isFreeAction: true,
-                                            //onClick: function(event){
-                                            //    console.log(this.inputElement);
-                                            //    this.inputElement.current.focus()
-                                            //}.bind(this)
                                     }]}
                                 title={"Expenses from " + this.state.dateRange}
+                                detailPanel={this.state.tabledetails}
                             />
                         </div>
 

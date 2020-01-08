@@ -647,7 +647,7 @@ Date.prototype.getWeekNumber = function(){
 
 // static barchart variables
 var barchartlevels = {
-    bytransaction: {code: 0, callback:d => d.transaction_id},
+    bytransaction: {code: 0, callback: d => d.transaction_id},
     daily: {code:1, callback: d => d.date},
     weekly: {code:2, callback: d => new Date(d.date).getWeekNumber()},
     monthly: {code:3, callback: d => new Date(d.date).getMonth()},
