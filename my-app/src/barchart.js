@@ -10,10 +10,13 @@ import TableCell from '@material-ui/core/TableCell';
 import TableHead from '@material-ui/core/TableHead';
 import TableRow from '@material-ui/core/TableRow';
 import TablePagination from '@material-ui/core/TablePagination';
+
 import MaterialTable from 'material-table'
+import DateRangeIcon from '@material-ui/icons/DateRange'
 import MenuItem from '@material-ui/core/MenuItem';
 import Menu from '@material-ui/core/Menu';
 import ButtonGroup from '@material-ui/core/ButtonGroup';
+import MTableToolbar from 'material-table';
 import DateRangePicker from 'react-bootstrap-daterangepicker';
 import 'bootstrap/dist/css/bootstrap.css';
 import 'bootstrap-daterangepicker/daterangepicker.css';
@@ -29,7 +32,7 @@ class Barchart extends React.Component {
 
     constructor(){
         super();
-
+        this.inputElement = React.createRef();
         this.state = {chartstate: 'bar', // the state of the chart whether it is in bar format or pie format
                       masterdata: null, // master data is never modify
                       displaydata: null, // the data being physically display
@@ -39,8 +42,10 @@ class Barchart extends React.Component {
                       piechart: null, // piechart
                       page : 0, // deprecated
                       rowperpage : 5, // deprecated
-                      dateRange: "Enter Date", // date range display by th
+                      dateRange: "Enter Date", // date range display by table
                       anchorEl: null,
+                      startdate: moment(),
+                      enddate: moment(),
                       sortByLabel: "Chronological"
         };
     }
@@ -59,15 +64,22 @@ class Barchart extends React.Component {
                           .append("g")
                           .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
+
         var bchart = new barchart(financial.transactions, container, 700, 500);
         var pchart = new piechart(financial.transactions, container, 100, 200);
         //var pie = new piechart(financial.transactions.slice(0, 10), el2, 700, 500);
+        let  startdate = moment(financial.transactions.slice(-1)[0].date,'YYYY-MM-DD');
+        let  enddate =  moment(financial.transactions[0].date, 'YYYY-MM-DD');
+
         this.setState({chart: bchart,
                              piechart: pchart,
                              level: barchartlevels.bytransaction,
                              masterdata: financial.transactions.filter(d => d.amount > 0),
-                             displaydata: financial.transactions.filter(d => d.amount > 0)});
-
+                             displaydata: financial.transactions.filter(d => d.amount > 0),
+                             startdate: startdate,
+                             enddate: enddate,
+                             dateRange: startdate.format('MM/DD/YYYY') + ' - ' + enddate.format('MM/DD/YYYY')
+        });
     }
 
     handleClick(level){
@@ -114,6 +126,8 @@ class Barchart extends React.Component {
         }
     }
     handleDateChange(event, picker){
+        console.log(event);
+        console.log(picker);
         let filterfn = function(d){
             let date = moment(d.date, 'YYYY-MM-DD');
             return picker.startDate.isSameOrBefore(date)
@@ -148,9 +162,23 @@ class Barchart extends React.Component {
     }
 
     render() {
+
+        // daterange component (maybe move to another file for refactoring)
+
+        let daterange = (
+            <DateRangePicker
+                onApply={this.handleDateChange.bind(this)}
+                locale={{
+                    format: 'YYYY-MM-DD'
+                }}
+                startDate={this.state.startdate.format('YYYY-MM-DD')}
+                endDate={this.state.enddate.format('YYYY-MM-DD')}
+                opens="right">
+                <DateRangeIcon/>
+            </DateRangePicker>
+        );
         console.log(this.state);
-        console.log(this.state.chart ?
-            this.state.displaydata.map(d => [d.date, d.name, d.amount, d.category[0]]) : null);
+
         return (
                     <div>
                         <div id={"chart"}>
@@ -179,10 +207,6 @@ class Barchart extends React.Component {
                                     </Menu>
                                 </ButtonGroup>
                             </Fade>
-                            <DateRangePicker onApply={this.handleDateChange.bind(this)}>
-                                <Input value={this.state.dateRange}>
-                                </Input>
-                            </DateRangePicker>
                         </div>
                         <div>
                             <Button onClick={function(){
@@ -199,14 +223,15 @@ class Barchart extends React.Component {
                                                 this.setState( {showbutton: true});
                                                 this.setState({chartstate: "bar_enter"});
                                             }
-                            }.bind(this)}>
+                            }.bind(this)} id="daterange">
                                 BarChart
                             </Button>
                         </div>
                         <div>
                             <MaterialTable
                                 columns={[
-                                    { title: 'Date', field: 'date' },
+                                    { title: 'Date', field: 'date',
+                                    },
                                     { title: 'Name', field: 'name'},
                                     { title: 'Amount', field: 'amount'},
                                     { title: 'Category', field: 'category'}
@@ -218,7 +243,16 @@ class Barchart extends React.Component {
                                                   'amount' : d.amount,
                                                   'category' : d.category[0]}
                                       }) : null}
-                                title={"Expenses"}
+                                options={{actionsColumnIndex: 2}}
+                                actions={[{
+                                            icon: () => daterange,
+                                            isFreeAction: true,
+                                            //onClick: function(event){
+                                            //    console.log(this.inputElement);
+                                            //    this.inputElement.current.focus()
+                                            //}.bind(this)
+                                    }]}
+                                title={"Expenses from " + this.state.dateRange}
                             />
                         </div>
                         {/*

@@ -1,5 +1,7 @@
 import * as d3 from "d3";
 import {piechart} from './piechart.js'
+//hello world branch update
+
 
 class barchart {
     constructor(data, container, width, height) {
@@ -11,7 +13,8 @@ class barchart {
         this.height = height;
         this.currentlevel = {code: 0, callback: d => d.transaction_id};
         // withdrawal is data actually displayed
-        this.withdrawal = this.original_data;
+        // we reverse the orginal data because the data is order reverse chronologically from plaid
+        this.withdrawal = this.original_data.reverse();
         // assign properties used for display
         this.withdrawal.forEach(function(v){
             v.end = v.amount;
@@ -41,7 +44,7 @@ class barchart {
         // deposit is influx of money (possible future feature)
         this.deposit = data.filter(d => d.amount < 0);
         this.xScale = d3.scaleBand()
-            .domain(this.withdrawal.map(d => d.transaction_id).reverse())// reverse to make dates go from left to right
+            .domain(this.withdrawal.map(d => d.transaction_id))//.reverse())// reverse to make dates go from left to right
             .range([0, width])
             .padding(0.1);
         this.yScale = d3.scaleLinear()
@@ -235,7 +238,7 @@ class barchart {
             newXdomain.sort((a, b) => sortfn(a.values, b.values));
             var transitiondomain = this.gettransitiondomain(shiftup, groupcallback);
         }
-        newXdomain = newXdomain.map(d => d.key).reverse();
+        newXdomain = newXdomain.map(d => d.key)//.reverse();
 
         var xtransdelay = 0;
         var ytransdelay = 0;
@@ -262,7 +265,7 @@ class barchart {
             if (this.allsortfn !== null ){
                 this.shiftdomain(transitiondomain);
                 //i have no idea why we need to reverse the x domain here
-                newXdomain.reverse();
+                //newXdomain//.reverse();
                 xtransdelay   += 1000;
                 ytransdelay   += 1000;
                 bartransdelay += 1000;
@@ -343,10 +346,10 @@ class barchart {
             .entries(this.withdrawal);
         if (sortfn !== null){
             sorteddata = sorteddata.sort((a,b) => sortfn(a.values, b.values))
-        } else {
+        } //else {
             // sort chronologically
-            sorteddata.reverse();
-        }
+            //sorteddata.reverse();
+        //}
         this.shiftdomain(sorteddata.map(d => d.key), delay, instant);
         this.allsortfn = sortfn
     }
@@ -544,12 +547,12 @@ class barchart {
                 .entries(newdata)
                 .sort((a,b) => sortfn(a.values, b.values))
                 .map(d => d.key)
-                .reverse();//I am not sure why again
+                //.reverse();//I am not sure why again
             console.log(newdomain)
         } else {
             var newdomain = newdata.map(groupcallback)
         }
-        this.xScale.domain([...new Set(newdomain)].reverse());
+        this.xScale.domain([...new Set(newdomain)])//.reverse());
         this.xaxis.scale(this.xScale);
         this.yScale.domain([Math.max.apply(null, newdata.map(d => d.end)),0]).nice();
         this.yaxis.scale(this.yScale);
