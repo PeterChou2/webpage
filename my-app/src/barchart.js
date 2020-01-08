@@ -255,6 +255,7 @@ class Barchart extends React.Component {
                                 title={"Expenses from " + this.state.dateRange}
                             />
                         </div>
+
                         {/*
                     <Table>
                         <TableHead>
