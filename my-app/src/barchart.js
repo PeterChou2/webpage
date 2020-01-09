@@ -118,7 +118,7 @@ class Barchart extends React.Component {
                                              .rollup(function(v){
                                                 return {
                                                     data: v,
-                                                    sum: d3.sum(v, d => d.amount)
+                                                    sum: Math.round(d3.sum(v, d => d.amount) * 100) / 100
                                              }})
                                              .entries(this.state.displaydata)
                                              .map(d => ({
@@ -213,13 +213,18 @@ class Barchart extends React.Component {
                 && picker.endDate.isSameOrAfter(date)
         };
         this.setState({dateRange: picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'),
-                             displaydata: this.state.masterdata.filter(filterfn),
-                             displaydataformated: this.state.level.code !== 0 ? d3.nest()
+                             displaydata: this.state.masterdata.filter(filterfn)});
+        //handle change in barchart
+        this.state.chart.updatedata(filterfn);
+        //handle change in piechart
+        this.state.piechart.updatedata(filterfn);
+
+        this.setState({displaydataformated: this.state.level.code !== 0 ? d3.nest()
                                                                                   .key(this.state.level.callback)
                                                                                   .rollup(function(v){
                                                                                     return {
                                                                                         data: v,
-                                                                                        sum: d3.sum(v, d => d.amount)
+                                                                                        sum: Math.round(d3.sum(v, d => d.amount) * 100) / 100
                                                                                     }})
                                                                                   .entries(this.state.displaydata)
                                                                                   .map(d => ({
@@ -227,11 +232,9 @@ class Barchart extends React.Component {
                                                                                     'sum': d.value.sum,
                                                                                     'data': d.value.data
                                                                                   })) : this.state.displaydata});
-        console.log(this.state);
-        //handle change in barchart
-        this.state.chart.updatedata(filterfn);
-        //handle change in piechart
-        this.state.piechart.updatedata(filterfn);
+
+        console.log(this.state.displaydata);
+        console.log(this.state.chart.withdrawal);
     }
 
     handleMenuOpen (event) {
@@ -376,5 +379,9 @@ class Barchart extends React.Component {
         )
     }
 }
+//get fixed number decimal STACKOVERFLOW
+Number.prototype.round = function(places) {
+    return +(Math.round(this + "e+" + places)  + "e-" + places);
+};
 
 export default Barchart;

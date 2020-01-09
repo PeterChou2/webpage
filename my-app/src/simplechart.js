@@ -1,4 +1,5 @@
 import * as d3 from "d3";
+import moment from 'moment';
 import {piechart} from './piechart.js'
 //hello world branch update
 
@@ -636,21 +637,12 @@ class barchart {
     }
 }
 
-// week number function
-Date.prototype.getWeekNumber = function(){
-    var d = new Date(Date.UTC(this.getFullYear(), this.getMonth(), this.getDate()));
-    var dayNum = d.getUTCDay() || 7;
-    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-    var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-    return Math.ceil((((d - yearStart) / 86400000) + 1)/7)
-};
-
 // static barchart variables
 var barchartlevels = {
     bytransaction: {code: 0, callback: d => d.transaction_id},
     daily: {code:1, callback: d => d.date},
-    weekly: {code:2, callback: d => new Date(d.date).getWeekNumber()},
-    monthly: {code:3, callback: d => new Date(d.date).getMonth()},
+    weekly: {code:2, callback: d => moment(d.date, 'YYYY-MM-DD').format('YYYY/') + "W" + moment(d.date, 'YYYY-MM-DD').format('ww')},
+    monthly: {code:3, callback: d => moment(d.date, 'YYYY-MM-DD').format('YYYY MMM')},
 };
 //barchart.generatedevent = {
 //    legendchange : 0
