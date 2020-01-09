@@ -38,7 +38,7 @@ class Barchart extends React.Component {
                       masterdata: null, // master data is never modify
                       displaydata: null, // the data being physically display
                       displaydataformated: null, // the display data formated for nested purposes
-                      level: null,
+                      level: null, //keeps track of the grouping function
                       tabledetails: null, //table details panel for formatting
                       //filterfn: null,
                       showbutton: true, // boolean tracking whether the top 4 button (transaction, daily etc) is shown
@@ -64,7 +64,7 @@ class Barchart extends React.Component {
                           { title: 'Amount', field: 'amount'},
                           { title: 'Category', field: 'category'}
                       ],
-                      sortByLabel: "Chronological"
+                      sortByLabel: "chronological"//keeps track of the sorting format
         };
     }
 
@@ -358,7 +358,32 @@ class Barchart extends React.Component {
                                 detailPanel={this.state.tabledetails}
                                 options={{filtering: true,
                                           toolbarButtonAlignment: "left"}}
-                                onOrderChange={(orderedColumnId, orderDirection)=> console.log(orderedColumnId, orderDirection)}
+                                onOrderChange={function(orderedColumnId, orderDirection) {
+                                    //0 indicates date column
+                                    if (orderedColumnId === 0){
+                                        //probably bad (manually switch sortfn in barchart to null to force it to become
+                                        //chronological
+                                        if (this.state.chart.allsortfn !== null){
+                                            if (orderDirection === "asc") {
+                                                this.state.chart.sortdata_all(null);
+                                            } else if (orderDirection === "desc"){
+                                                this.state.chart.sortdata_all((a,b) => 1);
+                                            }
+                                        } else {
+                                            this.state.chart.shiftdomain(this.state.chart.xScale.domain().reverse())
+                                        }
+                                    } else if (orderedColumnId === 2 || (orderedColumnId === 1 && this.state.level.code > 0)){
+                                        if (orderDirection === "asc"){
+                                            this.state.chart.sortdata_all((a,b) => {
+                                                return d3.sum(a, a => a.amount) - d3.sum(b, b => b.amount);
+                                            });
+                                        } else if (orderDirection === "desc"){
+                                            this.state.chart.sortdata_all((a,b) => {
+                                                return d3.sum(b, b => b.amount) - d3.sum(a, a => a.amount);
+                                            });
+                                        }
+                                    }
+                                }.bind(this)}
                                 onSearchChange={(data) => {
                                     console.log("NEW");
                                     console.log(data);
@@ -410,9 +435,6 @@ class Barchart extends React.Component {
         )
     }
 }
-//get fixed number decimal STACKOVERFLOW
-Number.prototype.round = function(places) {
-    return +(Math.round(this + "e+" + places)  + "e-" + places);
-};
+
 
 export default Barchart;

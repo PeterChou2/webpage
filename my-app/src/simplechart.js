@@ -74,8 +74,8 @@ class barchart {
         this.groupsortfn = (a, b)=> new Date(a.date).getTime() - new Date(b.date).getTime();
         // function for how to sort all grouped data
         this.allsortfn = null;
-
     }
+
     detachevent(){
         // detach rectangle callback
         this.bargroup.selectAll("rect")
@@ -547,7 +547,7 @@ class barchart {
                 .key(groupcallback)
                 .entries(newdata)
                 .sort((a,b) => sortfn(a.values, b.values))
-                .map(d => d.key)
+                .map(d => d.key);
                 //.reverse();//I am not sure why again
             console.log(newdomain)
         } else {
