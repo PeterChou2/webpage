@@ -37,6 +37,7 @@ class Barchart extends React.Component {
                       masterdata: null, // master data is never modify
                       displaydata: null, // the data being physically display
                       displaydataformated: null, // the display data formated for nested purposes
+                      level: null,
                       tabledetails: null, //table details panel for formatting
                       //filterfn: null,
                       showbutton: true, // boolean tracking whether the top 4 button (transaction, daily etc) is shown
@@ -212,7 +213,21 @@ class Barchart extends React.Component {
                 && picker.endDate.isSameOrAfter(date)
         };
         this.setState({dateRange: picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'),
-                             displaydata: this.state.masterdata.filter(filterfn)});
+                             displaydata: this.state.masterdata.filter(filterfn),
+                             displaydataformated: this.state.level.code !== 0 ? d3.nest()
+                                                                                  .key(this.state.level.callback)
+                                                                                  .rollup(function(v){
+                                                                                    return {
+                                                                                        data: v,
+                                                                                        sum: d3.sum(v, d => d.amount)
+                                                                                    }})
+                                                                                  .entries(this.state.displaydata)
+                                                                                  .map(d => ({
+                                                                                    'key': d.key,
+                                                                                    'sum': d.value.sum,
+                                                                                    'data': d.value.data
+                                                                                  })) : this.state.displaydata});
+        console.log(this.state);
         //handle change in barchart
         this.state.chart.updatedata(filterfn);
         //handle change in piechart
