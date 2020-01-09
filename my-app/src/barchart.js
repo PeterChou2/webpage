@@ -13,6 +13,7 @@ import TablePagination from '@material-ui/core/TablePagination';
 
 import MaterialTable from 'material-table'
 import DateRangeIcon from '@material-ui/icons/DateRange'
+import FilterRow from 'material-table'
 import MenuItem from '@material-ui/core/MenuItem';
 import Menu from '@material-ui/core/Menu';
 import ButtonGroup from '@material-ui/core/ButtonGroup';
@@ -87,6 +88,8 @@ class Barchart extends React.Component {
         //var pie = new piechart(financial.transactions.slice(0, 10), el2, 700, 500);
         let  startdate = moment(financial.transactions.slice(-1)[0].date,'YYYY-MM-DD');
         let  enddate =  moment(financial.transactions[0].date, 'YYYY-MM-DD');
+        //map number to category
+
 
         this.setState({chart: bchart,
                              piechart: pchart,
@@ -104,6 +107,20 @@ class Barchart extends React.Component {
                                      'amount' : d.amount,
                                      'category' : d.category[0]}
                              }),
+                            defaulttableheader: [
+                                { title: 'Date', field: 'date',
+                                },
+                                { title: 'Name', field: 'name'},
+                                { title: 'Amount', field: 'amount'},
+                                { title: 'Category', field: 'category'}
+                            ],
+                            tableheader: [
+                                { title: 'Date', field: 'date',
+                                },
+                                { title: 'Name', field: 'name'},
+                                { title: 'Amount', field: 'amount'},
+                                { title: 'Category', field: 'category'}
+                            ],
                              startdate: startdate,
                              enddate: enddate,
                              dateRange: startdate.format('MM/DD/YYYY') + ' - ' + enddate.format('MM/DD/YYYY')
@@ -144,7 +161,8 @@ class Barchart extends React.Component {
                                              ]}
                                              data={rowData.data}
                                              options={{search: false,
-                                                       toolbar: false}}
+                                                       toolbar: false,
+                                                       filtering: false}}
                                          />)
                                  }}] : null
 
@@ -213,7 +231,12 @@ class Barchart extends React.Component {
                 && picker.endDate.isSameOrAfter(date)
         };
         this.setState({dateRange: picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'),
-                             displaydata: this.state.masterdata.filter(filterfn)});
+                             displaydata: this.state.masterdata.filter(filterfn).map(function(d){
+                                 return {'date': d.date,
+                                     'name': d.name,
+                                     'amount' : d.amount,
+                                     'category' : d.category[0]}
+                             })});
         //handle change in barchart
         this.state.chart.updatedata(filterfn);
         //handle change in piechart
@@ -333,6 +356,14 @@ class Barchart extends React.Component {
                                     }]}
                                 title={"Expenses from " + this.state.dateRange}
                                 detailPanel={this.state.tabledetails}
+                                options={{filtering: true,
+                                          toolbarButtonAlignment: "left"}}
+                                onOrderChange={(orderedColumnId, orderDirection)=> console.log(orderedColumnId, orderDirection)}
+                                onSearchChange={(data) => {
+                                    console.log("NEW");
+                                    console.log(data);
+                                    console.log();
+                                }}
                             />
                         </div>
 
