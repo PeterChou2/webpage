@@ -4,6 +4,8 @@ import {barchart, barchartlevels} from './simplechart'
 import {piechart} from './piechart.js'
 import financial from "./test";
 import Button from '@material-ui/core/Button';
+import SortIcon from '@material-ui/icons/Sort';
+import Paper from '@material-ui/core/Paper';
 import Table from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
@@ -13,6 +15,7 @@ import TablePagination from '@material-ui/core/TablePagination';
 
 import MaterialTable from 'material-table'
 import DateRangeIcon from '@material-ui/icons/DateRange'
+import Chip from '@material-ui/core/Chip';
 import FilterRow from 'material-table'
 import MenuItem from '@material-ui/core/MenuItem';
 import Menu from '@material-ui/core/Menu';
@@ -33,12 +36,13 @@ class Barchart extends React.Component {
 
     constructor(){
         super();
-        this.inputElement = React.createRef();
+        this.iconElement = React.createRef();
+        this.menuElement = React.createRef();
         this.state = {chartstate: 'bar', // the state of the chart whether it is in bar format or pie format
                       masterdata: null, // master data is never modify
                       displaydata: null, // the data being physically display
                       displaydataformated: null, // the display data formated for nested purposes
-                      level: null, //keeps track of the grouping function
+                      level: 0, //keeps track of the grouping function
                       tabledetails: null, //table details panel for formatting
                       //filterfn: null,
                       showbutton: true, // boolean tracking whether the top 4 button (transaction, daily etc) is shown
@@ -70,7 +74,13 @@ class Barchart extends React.Component {
 
     componentDidMount() {
         var el = document.getElementById('chart');
-
+        //this.interval = setInterval(() => {
+        //    if (this.state.chart.sortorder === 2000){
+        //        console.log("---START HERE---");
+        //        console.log({...this.state.chart});
+        //    }
+        //    console.log({...this.state.chart});
+        //}, 10);
         // temporary solution
         let width = 700;
         let height = 500;
@@ -94,29 +104,29 @@ class Barchart extends React.Component {
         this.setState({chart: bchart,
                              piechart: pchart,
                              level: barchartlevels.bytransaction,
-                             masterdata: financial.transactions.filter(d => d.amount > 0),
+                             masterdata: financial.transactions.filter(d => d.amount > 0).reverse(),
                              displaydata: financial.transactions.filter(d => d.amount > 0).map(function(d){
                                  return {'date': d.date,
                                          'name': d.name,
                                          'amount' : d.amount,
-                                         'category' : d.category[0]}
-                             }),
+                                         'category' : d.category[0],
+                                         'transactionid': d.transaction_id}
+                             }).reverse(),
                              displaydataformated: financial.transactions.filter(d => d.amount > 0).map(function(d){
                                  return {'date': d.date,
                                      'name': d.name,
                                      'amount' : d.amount,
-                                     'category' : d.category[0]}
-                             }),
+                                     'category' : d.category[0],
+                                     'transactionid': d.transaction_id}
+                             }).reverse(),
                             defaulttableheader: [
-                                { title: 'Date', field: 'date',
-                                },
+                                { title: 'Date', field: 'date'},
                                 { title: 'Name', field: 'name'},
                                 { title: 'Amount', field: 'amount'},
                                 { title: 'Category', field: 'category'}
                             ],
                             tableheader: [
-                                { title: 'Date', field: 'date',
-                                },
+                                { title: 'Date', field: 'date'},
                                 { title: 'Name', field: 'name'},
                                 { title: 'Amount', field: 'amount'},
                                 { title: 'Category', field: 'category'}
@@ -128,6 +138,8 @@ class Barchart extends React.Component {
     }
 
     handleClick(level){
+        console.log("HANDLE CLICK STATE");
+        console.log(this.state.defaulttableheader);
         this.setState({level: level,
                              //reformat display data
                              displaydataformated: level.code !== 0 ? d3.nest()
@@ -140,12 +152,12 @@ class Barchart extends React.Component {
                                              .entries(this.state.displaydata)
                                              .map(d => ({
                                                  'key': d.key,
-                                                 'sum': d.value.sum,
+                                                 'amount': d.value.sum,
                                                  'data': d.value.data
                                              })) : this.state.displaydata,
                              tableheader: level.code !== 0 ? [
-                                 {title: "Time", field : "key"},
-                                 {title: "Sum",  field : "sum"}]
+                                 {title: "Date", field : "key", defaultSort: this.state.chart.sortorder.orderedColumnId === 0 ? this.state.chart.sortorder.orderDirection : ""},
+                                 {title: "Amount",  field : "amount", defaultSort: this.state.chart.sortorder.orderedColumnId === 2 ? this.state.chart.sortorder.orderDirection : ""}]
                                  : this.state.defaulttableheader,
                              tabledetails: level.code !== 0 ? [{
                                  tooltip: 'Expand',
@@ -167,36 +179,18 @@ class Barchart extends React.Component {
                                  }}] : null
 
         });
-        console.log("displaydata");
-        console.log(this.state);
-        console.log(level.code !== 0 ? d3.nest()
-            .key(level.callback)
-            .rollup(function(v){
-                return {
-                    data: v,
-                    sum: d3.sum(v, d => d.amount)
-                }})
-            .entries(this.state.displaydata)
-            .map(d => ({
-                'key': d.key,
-                'sum': d.value.sum,
-                'data': d.value.data
-            })) : this.displaydata)
+        this.handleMenuClose();
     }
 
     handleChangePage(event, newpage){
-        console.log(newpage);
-        console.log(this.state);
         this.setState( {page: newpage})
     }
 
     handleRowChange(event) {
-        console.log(event.target.value);
         this.setState({rowperpage: event.target.value})
     }
 
     componentDidUpdate() {
-        console.log("component did update");
         if (this.state.chartstate === "bar_enter"){
             // exit animation for pie chart
             this.state.piechart.exit();
@@ -223,8 +217,6 @@ class Barchart extends React.Component {
         }
     }
     handleDateChange(event, picker){
-        console.log(event);
-        console.log(picker);
         let filterfn = function(d){
             let date = moment(d.date, 'YYYY-MM-DD');
             return picker.startDate.isSameOrBefore(date)
@@ -256,29 +248,16 @@ class Barchart extends React.Component {
                                                                                     'data': d.value.data
                                                                                   })) : this.state.displaydata});
 
-        console.log(this.state.displaydata);
-        console.log(this.state.chart.withdrawal);
     }
 
     handleMenuOpen (event) {
-        console.log(event);
         this.setState({anchorEl: event.currentTarget});
     }
 
-    handleMenuClose(sortbylabel) {
-        console.log(sortbylabel);
-        this.setState({
-            anchorEl: null,
-            sortByLabel: sortbylabel
-        });
-        if (sortbylabel === "Min to Max"){
-            this.state.chart.sortdata_all((a,b) => {
-                return d3.sum(a, a => a.amount) - d3.sum(b, b => b.amount);
-            })
-        } else {
-            this.state.chart.sortdata_all(null);
-        }
+    handleMenuClose() {
+        this.setState({anchorEl: null});
     }
+
 
     render() {
 
@@ -293,10 +272,9 @@ class Barchart extends React.Component {
                 startDate={this.state.startdate.format('YYYY-MM-DD')}
                 endDate={this.state.enddate.format('YYYY-MM-DD')}
                 opens="right">
-                <DateRangeIcon/>
+                {this.menuElement}
             </DateRangePicker>
         );
-        console.log(this.state);
 
         return (
                     <div>
@@ -305,25 +283,10 @@ class Barchart extends React.Component {
                         <div>
                             <Fade when={this.state.showbutton}>
                                 <ButtonGroup className={this.state.showbutton ? null : "nodisplay"}>
-                                    <Button onClick={this.handleClick.bind(this,barchartlevels.bytransaction)}>Transaction</Button>
+                                    <Button onClick={this.handleClick.bind(this,barchartlevels.bytransaction)} ref={this.menuElement}>Transaction</Button>
                                     <Button onClick={this.handleClick.bind(this,barchartlevels.daily)}>Daily</Button>
                                     <Button onClick={this.handleClick.bind(this,barchartlevels.weekly)}>Weekly</Button>
                                     <Button onClick={this.handleClick.bind(this,barchartlevels.monthly)}>Monthly</Button>
-                                    <Button onClick={this.handleMenuOpen.bind(this)} className="custombutton">
-                                        {this.state.sortByLabel}
-                                    </Button>
-                                    <Menu
-                                        anchorEl={this.state.anchorEl}
-                                        onClose={this.handleMenuClose.bind(this)}
-                                        open={Boolean(this.state.anchorEl)}
-                                    >
-                                        <MenuItem
-                                            value="Chronological"
-                                            onClick={this.handleMenuClose.bind(this, "Chronological")}>Chronological</MenuItem>
-                                        <MenuItem
-                                            value="Min to Max"
-                                            onClick={this.handleMenuClose.bind(this, "Min to Max")}>Min to Max</MenuItem>
-                                    </Menu>
                                 </ButtonGroup>
                             </Fade>
                         </div>
@@ -346,91 +309,111 @@ class Barchart extends React.Component {
                                 BarChart
                             </Button>
                         </div>
+                        {/*
+                                                            <Menu
+                                        anchorEl={this.state.anchorEl}
+                                        onClose={this.handleMenuClose.bind(this)}
+                                        open={Boolean(this.state.anchorEl)}
+                                    >
+                                        <MenuItem
+                                            value="Chronological"
+                                            onClick={this.handleMenuClose.bind(this, "Chronological")}>Chronological</MenuItem>
+                                        <MenuItem
+                                            value="Min to Max"
+                                            onClick={this.handleMenuClose.bind(this, "Min to Max")}>Min to Max</MenuItem>
+                                    </Menu>
+                        */}
                         <div>
+                            <Menu
+                                anchorEl={this.state.anchorEl}
+                                onClose={this.handleMenuClose.bind(this)}
+                                open={Boolean(this.state.anchorEl)}>
+                                <MenuItem onClick={this.handleClick.bind(this,barchartlevels.bytransaction)}>Transaction</MenuItem>
+                                <MenuItem onClick={this.handleClick.bind(this,barchartlevels.daily)}>Daily</MenuItem>
+                                <MenuItem onClick={this.handleClick.bind(this,barchartlevels.weekly)}>Weekly</MenuItem>
+                                <MenuItem onClick={this.handleClick.bind(this,barchartlevels.monthly)}>Monthly</MenuItem>
+                            </Menu>
+
                             <MaterialTable
+                                key={JSON.stringify(this.state.level)}
                                 columns={this.state.tableheader}
                                 data={this.state.chart ? this.state.displaydataformated : null}
-                                actions={[{
-                                            icon: () => daterange,
-                                            isFreeAction: true,
-                                    }]}
-                                title={"Expenses from " + this.state.dateRange}
+                                title={<div>
+                                    {"Expenses from "}
+                                    <Chip label={this.state.dateRange}/>
+                                    {" sort by: "}
+                                    <Chip label={this.state.level.name}/>
+                                </div>}
                                 detailPanel={this.state.tabledetails}
-                                options={{filtering: true,
-                                          toolbarButtonAlignment: "left"}}
+                                options={{filtering: true}}
+                                components={{
+                                    Toolbar: props => (
+                                        <div>
+                                            <MTableToolbar {...props} />
+                                            <div style={{padding: '0px 10px'}}>
+                                                <Chip label="Chip 1" color="secondary" style={{marginRight: 5}}/>
+                                                <Chip label="Chip 2" color="secondary" style={{marginRight: 5}}/>
+                                                <Chip label="Chip 3" color="secondary" style={{marginRight: 5}}/>
+                                                <Chip label="Chip 4" color="secondary" style={{marginRight: 5}}/>
+                                                <Chip label="Chip 5" color="secondary" style={{marginRight: 5}}/>
+                                            </div>
+                                        </div>
+                                    ),
+                                }}
                                 onOrderChange={function(orderedColumnId, orderDirection) {
-                                    //0 indicates date column
-                                    if (orderedColumnId === 0){
-                                        //probably bad (manually switch sortfn in barchart to null to force it to become
-                                        //chronological
-                                        if (this.state.chart.allsortfn !== null){
+                                    let sortorder = {
+                                        orderDirection: orderDirection,
+                                        orderedColumnId: orderedColumnId
+                                    };
+                                    // we do not change chart if the table order is the same as the chart
+                                    if (this.state.chart.sortorder.orderDirection !== orderDirection
+                                        || this.state.chart.sortorder.orderedColumnId !== orderedColumnId) {
+                                        if (orderedColumnId === 0) {
                                             if (orderDirection === "asc") {
-                                                this.state.chart.sortdata_all(null);
-                                            } else if (orderDirection === "desc"){
-                                                this.state.chart.sortdata_all((a,b) => 1);
+                                                this.state.chart.sortdata_all(null, { ...sortorder });
+                                            } else if (orderDirection === "desc") {
+                                                this.state.chart.sortdata_all((a, b) => -1, { ...sortorder });
                                             }
-                                        } else {
-                                            this.state.chart.shiftdomain(this.state.chart.xScale.domain().reverse())
-                                        }
-                                    } else if (orderedColumnId === 2 || (orderedColumnId === 1 && this.state.level.code > 0)){
-                                        if (orderDirection === "asc"){
-                                            this.state.chart.sortdata_all((a,b) => {
-                                                return d3.sum(a, a => a.amount) - d3.sum(b, b => b.amount);
-                                            });
-                                        } else if (orderDirection === "desc"){
-                                            this.state.chart.sortdata_all((a,b) => {
-                                                return d3.sum(b, b => b.amount) - d3.sum(a, a => a.amount);
+                                        } else if (orderedColumnId === 2 || (orderedColumnId === 1 && this.state.level.code > 0)) {
+                                            if (orderDirection === "asc") {
+                                                this.state.chart.sortdata_all((a, b) => {
+                                                    return d3.sum(a, a => a.amount) - d3.sum(b, b => b.amount);
+                                                }, { ...sortorder });
+                                            } else if (orderDirection === "desc") {
+                                                this.state.chart.sortdata_all((a, b) => {
+                                                    return d3.sum(b, b => b.amount) - d3.sum(a, a => a.amount);
+                                                }, { ...sortorder });
+                                            }
+                                        } else if (orderedColumnId === -1){
+                                            //if order column id is -1 we reset back to normal which is asc 0
+                                            this.state.chart.sortdata_all(null, {
+                                                orderDirection: "asc",
+                                                orderedColumnId: 0
                                             });
                                         }
                                     }
+                                    // retain order of operations between tables
+                                    this.setState({defaulttableheader : [
+                                        { title: 'Date', field: 'date', defaultSort: this.state.chart.sortorder.orderedColumnId === 0 ? this.state.chart.sortorder.orderDirection : ""},
+                                        { title: 'Name', field: 'name'},
+                                        { title: 'Amount', field: 'amount', defaultSort: this.state.chart.sortorder.orderedColumnId === 1 ? this.state.chart.sortorder.orderDirection : ""},
+                                        { title: 'Category', field: 'category'}
+                                    ]})
                                 }.bind(this)}
-                                onSearchChange={(data) => {
-                                    console.log("NEW");
-                                    console.log(data);
-                                    console.log();
-                                }}
                             />
-                        </div>
 
-                        {/*
-                    <Table>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>Date</TableCell>
-                                <TableCell>Name</TableCell
-                                <TableCell>Amount</TableCell>
-                                <TableCell>Category</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {
-                                this.state.chart ? this.state.chart.original_data.map(
-                                    row => (
-                                        <TableRow>
-                                            <TableCell>{row.date}</TableCell>
-                                            <TableCell>{row.name}</TableCell>
-                                            <TableCell>{row.amount}</TableCell>
-                                            <TableCell>{row.category[0]}</TableCell>
-                                        </TableRow>
-                                    )
-                                ).slice(
-                                    this.state.page * this.state.rowperpage,
-                                    this.state.page * this.state.rowperpage + this.state.rowperpage)
-                                    : null
-                            }
-                        </TableBody>
-                    </Table>
-                    <TablePagination
-                        rowsPerPageOptions={[5, 10, 25]}
-                        component="div"
-                        count={this.state.chart ? this.state.chart.withdrawal.length : 0}
-                        rowsPerPage={this.state.rowperpage}
-                        page={this.state.page}
-                        onChangePage={this.handleChangePage.bind(this)}
-                        onChangeRowsPerPage={this.handleRowChange.bind(this)}
-                    />
-                </div>
-             */}
+                            {/*actions={[{
+                                    icon: () => <DateRangeIcon/>,
+                                    isFreeAction: true,
+                                    onClick: (event) => null
+                                },
+                                    {
+                                        icon: function(){return <SortIcon/>}.bind(this),
+                                        isFreeAction: true,
+                                        onClick: function(event){this.handleMenuOpen(event)}.bind(this)
+                                    }]}
+                                 */}
+                        </div>
                     </div>
         )
     }

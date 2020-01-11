@@ -30,7 +30,10 @@ class barchart {
         this.allcategory = [...new Set(this.withdrawal.map(function(d){return this.colorcallback(d)}.bind(this)))];
         this.colorscale = d3.scaleOrdinal(d3.schemeCategory10)
             .domain(this.allcategory);
-
+        this.sortorder = {
+            orderedColumnId : 0,
+            orderDirection: 'asc'
+        };
         this.legend = this.allcategory.map(function(d){
             return {color: this.colorscale(d),
                 labels: d}
@@ -203,7 +206,11 @@ class barchart {
     }
 
     shift(level){
+        console.log("current");
+        console.log(this);
         console.log("level recieved within", level);
+        console.log("sort level");
+        console.log(this.sortorder);
         // reorganize data with the new coordinates
         var groupcallback = level.callback;
         var withdrawal = this.withdrawal;
@@ -236,7 +243,10 @@ class barchart {
             .key(groupcallback)
             .entries(this.withdrawal);
         if (this.allsortfn !== null) {
+            console.log("new X");
+            console.log(newXdomain);
             newXdomain.sort((a, b) => sortfn(a.values, b.values));
+            console.log(newXdomain);
             var transitiondomain = this.gettransitiondomain(shiftup, groupcallback);
         }
         newXdomain = newXdomain.map(d => d.key)//.reverse();
@@ -263,7 +273,7 @@ class barchart {
             this.currentlevel = level;
         } else if (shiftup){
             console.log("shiftup");
-            if (this.allsortfn !== null ){
+            if (this.allsortfn !== null && this.sortorder.orderedColumnId !== 0){
                 this.shiftdomain(transitiondomain);
                 //i have no idea why we need to reverse the x domain here
                 //newXdomain//.reverse();
@@ -302,7 +312,11 @@ class barchart {
         } else {
             console.log('shiftdown');
             this.yScale.domain([Math.max.apply(null, withdrawal.map(d => d.end)),0]).nice();
-            var newdomain = this.allsortfn !== null ? transitiondomain : newXdomain;
+            console.log( this.sortorder.orderedColumnId);
+            console.log(this.sortorder.orderDirection);
+            console.log(this.sortorder);
+            var newdomain = this.allsortfn === null || this.sortorder.orderedColumnId === 0 ? newXdomain : transitiondomain;
+
             this.xScale.domain(newdomain);
             this.xaxis.scale(this.xScale);
             this.yaxis.scale(this.yScale);
@@ -327,16 +341,17 @@ class barchart {
                 .attr('height', function (d){return Math.abs(this.yScale(d.start) - this.yScale(d.end))}.bind(this));
 
             this.currentlevel = level;
-            if (this.allsortfn !== null){
+            if (this.allsortfn !== null && this.sortorder.orderedColumnId !== 0){
                 console.log("all sort function");
-                this.sortdata_all(this.allsortfn, 2000);
+                this.sortdata_all(this.allsortfn, this.sortorder,2000);
             }
         }
         if (this.hidden){
             this.bargroup.selectAll("rect").style("opacity", 0)
         }
     }
-    sortdata_all(sortfn, delay = 0, instant = false){
+    sortdata_all(sortfn, orderchange, delay = 0, instant = false){
+        // orderchange specify which column on the table was changed and in what order
         // sort grouped data (daily, weekly, monthly, yearly)
         // sortfn will take in two array of the groups
         // a null input will cause the function to be sort chronologically (default)
@@ -352,7 +367,11 @@ class barchart {
             //sorteddata.reverse();
         //}
         this.shiftdomain(sorteddata.map(d => d.key), delay, instant);
-        this.allsortfn = sortfn
+        this.sortorder = orderchange;
+        this.allsortfn = sortfn;
+
+        console.log("ORDER CHANGE");
+        console.log(this);
     }
 
     sortdata_grouped(sortfn){
@@ -639,10 +658,10 @@ class barchart {
 
 // static barchart variables
 var barchartlevels = {
-    bytransaction: {code: 0, callback: d => d.transaction_id},
-    daily: {code:1, callback: d => d.date},
-    weekly: {code:2, callback: d => moment(d.date, 'YYYY-MM-DD').format('YYYY/') + "W" + moment(d.date, 'YYYY-MM-DD').format('ww')},
-    monthly: {code:3, callback: d => moment(d.date, 'YYYY-MM-DD').format('YYYY MMM')},
+    bytransaction: {code: 0, callback: d => d.transaction_id, name: "transaction"},
+    daily: {code:1, callback: d => d.date, name: "daily"},
+    weekly: {code:2, callback: d => moment(d.date, 'YYYY-MM-DD').format('YYYY/') + "W" + moment(d.date, 'YYYY-MM-DD').format('ww'), name: "weekly"},
+    monthly: {code:3, callback: d => moment(d.date, 'YYYY-MM-DD').format('YYYY MMM'), name: "monthly"},
 };
 //barchart.generatedevent = {
 //    legendchange : 0
