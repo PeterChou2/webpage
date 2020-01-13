@@ -2,40 +2,23 @@ import React from 'react';
 import './App.css';
 import {barchart, barchartlevels} from './simplechart'
 import {piechart} from './piechart.js'
-import financial from "./test";
-import Button from '@material-ui/core/Button';
-import SortIcon from '@material-ui/icons/Sort';
-import Paper from '@material-ui/core/Paper';
-import Table from '@material-ui/core/Table';
-import TableBody from '@material-ui/core/TableBody';
-import TableCell from '@material-ui/core/TableCell';
-import TableHead from '@material-ui/core/TableHead';
-import TableRow from '@material-ui/core/TableRow';
-import TablePagination from '@material-ui/core/TablePagination';
-
 import MaterialTable from 'material-table'
-import DateRangeIcon from '@material-ui/icons/DateRange'
 import Chip from '@material-ui/core/Chip';
-import FilterRow from 'material-table'
 import MenuItem from '@material-ui/core/MenuItem';
 import Menu from '@material-ui/core/Menu';
-import ButtonGroup from '@material-ui/core/ButtonGroup';
-import MTableToolbar from 'material-table';
 import DateRangePicker from 'react-bootstrap-daterangepicker';
 import 'bootstrap/dist/css/bootstrap.css';
 import 'bootstrap-daterangepicker/daterangepicker.css';
-import Input from '@material-ui/core/Input';
 import moment from 'moment';
-import Fade from 'react-reveal/Fade';
 import "./chart.css";
 import * as d3 from "d3";
 
 
 
-class Barchart extends React.Component {
+class Dashboard extends React.Component {
 
-    constructor(){
-        super();
+    constructor(props){
+        super(props);
         this.tableElement = React.createRef();
         this.columnid2name = {
             0 : "date",
@@ -43,6 +26,8 @@ class Barchart extends React.Component {
             2 : "amount",
             3 : "category"
         };
+
+
         this.state = {chartstate: 'bar', // the state of the chart whether it is in bar format or pie format
                       scalelabel: "Linear",
                       masterdata: null, // master data is never modify
@@ -102,17 +87,17 @@ class Barchart extends React.Component {
                           .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
 
-        var bchart = new barchart(financial.transactions, container1, 700, 500);
-        var pchart = new piechart(financial.transactions, container2, 100, 200);
+        var bchart = new barchart(this.props.data.transactions, container1, 700, 500);
+        var pchart = new piechart(this.props.data.transactions, container2, 100, 200);
 
-        let category = [...new Set(financial.transactions.map(d => d.category[0]))];
+        let category = [...new Set(this.props.data.transactions.map(d => d.category[0]))];
         this.category2id = {};
         this.id2category = {};
         category.forEach(function(v, i){
             this.category2id[v] = i;
             this.id2category[i] = v;
         }.bind(this));
-        let name = [...new Set(financial.transactions.map(d => d.name))];
+        let name = [...new Set(this.props.data.transactions.map(d => d.name))];
         this.name2id = {};
         this.id2name = {};
         name.forEach(function(v, i){
@@ -122,24 +107,24 @@ class Barchart extends React.Component {
 
 
         //console.log(category2id, id2category);
-        //var pie = new piechart(financial.transactions.slice(0, 10), el2, 700, 500);
-        let  startdate = moment(financial.transactions.slice(-1)[0].date,'YYYY-MM-DD');
-        let  enddate =  moment(financial.transactions[0].date, 'YYYY-MM-DD');
+        //var pie = new piechart(this.props.data.transactions.slice(0, 10), el2, 700, 500);
+        let  startdate = moment(this.props.data.transactions.slice(-1)[0].date,'YYYY-MM-DD');
+        let  enddate =  moment(this.props.data.transactions[0].date, 'YYYY-MM-DD');
         //map number to category
 
 
         this.setState({chart: bchart,
                              piechart: pchart,
                              level: barchartlevels.bytransaction,
-                             masterdata: financial.transactions.filter(d => d.amount > 0).reverse(),
-                             displaydata: financial.transactions.filter(d => d.amount > 0).map(function(d){
+                             masterdata: this.props.data.transactions.filter(d => d.amount > 0).reverse(),
+                             displaydata: this.props.data.transactions.filter(d => d.amount > 0).map(function(d){
                                  return {'date': d.date,
                                          'name': this.name2id[d.name],
                                          'amount' : d.amount,
                                          'category' : this.category2id[d.category[0]],
                                          'transactionid': d.transaction_id}
                              }.bind(this)).reverse(),
-                             displaydataformated: financial.transactions.filter(d => d.amount > 0).map(function(d){
+                             displaydataformated: this.props.data.transactions.filter(d => d.amount > 0).map(function(d){
                                  return {'date': d.date,
                                      'name': this.name2id[d.name],
                                      'amount' : d.amount,
@@ -367,21 +352,6 @@ class Barchart extends React.Component {
                         </div>
                         <div style={{display: "inline-block"}} id={"piechart"}>
                         </div>
-                        {/*
-                                                            <Menu
-                                        anchorEl={this.state.anchorEl}
-                                        onClose={this.handleMenuClose.bind(this)}
-                                        open={Boolean(this.state.anchorEl)}
-                                    >
-                                        <MenuItem
-                                            value="Chronological"
-                                            onClick={this.handleMenuClose.bind(this, "Chronological")}>Chronological</MenuItem>
-                                        <MenuItem
-                                            value="Min to Max"
-                                            onClick={this.handleMenuClose.bind(this, "Min to Max")}>Min to Max</MenuItem>
-                                    </Menu>
-                                    style={{width: "1000px",  margin: "0 auto"}}
-                        */}
                         <div style={{width: "1500px",  margin: "0 auto"}}>
 
                             <Menu
@@ -470,4 +440,4 @@ class Barchart extends React.Component {
 }
 
 
-export default Barchart;
+export default Dashboard;

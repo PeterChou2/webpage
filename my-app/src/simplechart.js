@@ -1,12 +1,15 @@
-import * as d3 from "d3";
+/* eslint-disable import/first */
 import moment from 'moment';
-import {piechart} from './piechart.js'
-//hello world branch update
-
+let d3 = require("d3");
+let d3tip = require("d3-tip");
 
 class barchart {
     constructor(data, container, width, height) {
         console.log(data);
+        console.log(d3);
+        d3.tip = d3tip;
+        console.log(d3tip);
+        //let tip = d3.tip().attr('class', 'd3-tip').html(function(d) { return d; });
         // original data is data we wont touch and is used for updating data
         this.container = container;
         this.original_data = data.filter(d => d.amount > 0);
@@ -63,6 +66,10 @@ class barchart {
             .call(this.xaxis);
         this.yContainer = container.append("g").call(this.yaxis);
         this.bargroup = container.append("g");
+
+        //console.log(d3tip);
+        //this.bargroup.call(tip);
+
         this.bargroup.selectAll("rect")
             .data(this.withdrawal, d => d.transaction_id)
             .enter()
@@ -77,6 +84,8 @@ class barchart {
             .attr('y', function (d) {return this.yScale(d.amount)}.bind(this))
             .attr('width', this.xScale.bandwidth())
             .attr('height', function (d) {return Math.abs(this.yScale(d.amount) - this.yScale(0))}.bind(this));
+           // .on('mouseover', tip.show)
+           // .on('mouseout', tip.hide);
 
         this.attachevent();
         // function for how to sort grouped data

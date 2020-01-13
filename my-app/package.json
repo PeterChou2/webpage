@@ -18,6 +18,7 @@
     "react-bootstrap-daterangepicker": "^4.1.0",
     "react-datepicker": "^2.10.1",
     "react-dom": "^16.11.0",
+    "react-plaid-link": "^1.5.0",
     "react-reveal": "^1.2.2",
     "react-scripts": "3.2.0"
   },
