@@ -9,6 +9,7 @@
     "bootstrap-daterangepicker": "^3.0.5",
     "d3": "^5.14.2",
     "d3-array": "^2.4.0",
+    "d3-tip": "^0.9.1",
     "jquery": "^3.4.1",
     "material-table": "^1.54.2",
     "moment": "^2.24.0",

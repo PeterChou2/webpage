@@ -5,7 +5,7 @@ class piechart {
                 innerradius, outerradius){
 
         this.original_data = data.filter(d => d.amount > 0);
-        this.withdrawal = this.original_data;
+        this.withdrawal = this.original_data.reverse();
         this.groupfunc = d3.nest()
                           .key(d => d.category[0])
                           .rollup(v => d3.sum(v, d => d.amount));

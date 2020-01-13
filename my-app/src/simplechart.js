@@ -34,6 +34,7 @@ class barchart {
             orderedColumnId : 0,
             orderDirection: 'asc'
         };
+        // not used (yet)
         this.legend = this.allcategory.map(function(d){
             return {color: this.colorscale(d),
                 labels: d}
@@ -66,8 +67,13 @@ class barchart {
             .data(this.withdrawal, d => d.transaction_id)
             .enter()
             .append("rect")
-            .attr("fill", function(d){return this.colorscale(d.category[0])}.bind(this))
             .attr('x', function(d){return this.xScale(d.transaction_id);}.bind(this))
+            .attr("y", this.height)
+            .attr('width', this.xScale.bandwidth())
+            .attr("height", 0)
+            .transition()
+            .duration(1000)
+            .attr("fill", function(d){return this.colorscale(d.category[0])}.bind(this))
             .attr('y', function (d) {return this.yScale(d.amount)}.bind(this))
             .attr('width', this.xScale.bandwidth())
             .attr('height', function (d) {return Math.abs(this.yScale(d.amount) - this.yScale(0))}.bind(this));
@@ -176,7 +182,7 @@ class barchart {
         d3.nest()
             .key(shiftup ? groupcallback : currentcallback)
             .entries(this.withdrawal)
-            .sort((a,b) => sortfn(a.values, b.values))
+            .sort((a,b) => sortfn === null ? 1 : sortfn(a.values, b.values))
             .forEach(function(v){
                 v.values.sort(this.groupsortfn);
                 transitiondomain = transitiondomain.concat(v.values.map(d => shiftup ? currentcallback(d) : groupcallback(d)))
@@ -200,10 +206,100 @@ class barchart {
             .data(this.withdrawal, d => d.transaction_id)
             .transition()
             .duration(instantswitch(1000))
-            .delay(instantswitch(delay))
+            .delay(instantswitch(function(d){return delay + newdomain.indexOf(groupcallback(d)) * 5 }))
             .attr('x', function (d) {return this.xScale(groupcallback(d))}.bind(this))
-
+        //return length of animation
+        return newdomain.length * 5
     }
+
+    groupshift(level){
+        if (level.code === this.currentlevel.code) return;
+
+        var groupcallback = level.callback;
+        var withdrawal = this.withdrawal;
+        var groupsortfn = this.groupsortfn;
+        var sortfn = this.allsortfn;
+
+        if (this.currentlevel.code > 0) {
+            this.shift(barchartlevels.bytransaction);
+            var animationdelay = 2000
+
+        } else {
+            var animationdelay = 0
+        }
+
+        var transitiondomain = [];
+        let currentcallback = this.currentlevel.callback;
+        d3.nest()
+            .key(groupcallback)
+            .entries(this.withdrawal)
+            .sort((a,b) => sortfn === null ? 1 : sortfn(a.values, b.values))
+            .forEach(function(v){
+                v.values.sort(this.groupsortfn);
+                transitiondomain = transitiondomain.concat(v.values.map(d => currentcallback(d)))
+            }.bind(this));
+        var newX1domain =  [...new Set(transitiondomain)];
+        // shift down reorganize
+        let delay = this.shiftdomain(newX1domain, animationdelay);
+
+        d3.nest()
+            .key(groupcallback)
+            .rollup(function(v){
+                var start = 0;
+                v.sort(groupsortfn);
+                v.forEach(function(d){
+                    let data = withdrawal.filter(f => f.transaction_id === d.transaction_id)[0];
+                    data.start = start;
+                    data.end = start + data.amount;
+                    start += data.amount;
+                });
+            }).entries(withdrawal);
+
+
+        var transitiondomain = [];
+        d3.nest()
+            .key(groupcallback)
+            .entries(this.withdrawal)
+            .sort((a,b) => sortfn === null ? 1 : sortfn(a.values, b.values))
+            .forEach(function(v){
+                v.values.sort(this.groupsortfn);
+                transitiondomain = transitiondomain.concat(v.values.map(d => groupcallback(d)))
+            }.bind(this));
+        var newX2domain =  [...new Set(transitiondomain)];
+
+
+        //var newX2domain = this.gettransitiondomain(false, groupcallback);
+
+        this.yScale.domain([Math.max.apply(null, withdrawal.map(d => d.end)),0]).nice();
+        this.xScale.domain(newX2domain);
+        this.xaxis.scale(this.xScale);
+        this.yaxis.scale(this.yScale);
+        this.xContainer
+            .transition()
+            .duration(1000)
+            .delay(animationdelay + 2000 + delay)
+            .call(this.xaxis);
+
+        this.yContainer.transition()
+            .delay(animationdelay + 1000 + delay)
+            .duration(1000)
+            .call(this.yaxis);
+
+        this.bargroup.selectAll("rect")
+            .data(withdrawal, d => d.transaction_id)
+            .transition()
+            .delay(animationdelay + 1000 + delay)
+            .duration(1000)
+            .attr('y', function (d) {return this.yScale(d.end)}.bind(this))
+            .attr('height', function (d){return Math.abs(this.yScale(d.start) - this.yScale(d.end))}.bind(this))
+            .transition()
+            .duration(1000)
+            .attr('x', function (d) {return this.xScale(groupcallback(d))}.bind(this))
+            .attr('width', this.xScale.bandwidth());
+
+        this.currentlevel = level;
+    }
+
 
     shift(level){
         console.log("current");
@@ -236,20 +332,24 @@ class barchart {
                     start += data.amount;
                 });
             }).entries(withdrawal);
-        var shiftup = level.code > this.currentlevel.code;
+        let shiftup;
+        if (level.code > 3){
+            shiftup = false;
+        } else {
+            shiftup = level.code > this.currentlevel.code;
+        }
         // generated reorganized coordinates
         // use xtrans because timing may be different depending on if graph is sorted
         var newXdomain = d3.nest()
             .key(groupcallback)
             .entries(this.withdrawal);
-        if (this.allsortfn !== null) {
-            console.log("new X");
-            console.log(newXdomain);
-            newXdomain.sort((a, b) => sortfn(a.values, b.values));
-            console.log(newXdomain);
-            var transitiondomain = this.gettransitiondomain(shiftup, groupcallback);
-        }
-        newXdomain = newXdomain.map(d => d.key)//.reverse();
+        //if (this.allsortfn !== null) {
+        //    newXdomain.sort((a, b) => sortfn(a.values, b.values));
+        //    var transitiondomain = this.gettransitiondomain(shiftup, groupcallback);
+        //}
+        newXdomain.sort((a, b) => sortfn === null ? 1 : sortfn(a.values, b.values));
+        var transitiondomain = this.gettransitiondomain(shiftup, groupcallback);
+        newXdomain = newXdomain.map(d => d.key);//.reverse();
 
         var xtransdelay = 0;
         var ytransdelay = 0;
@@ -273,13 +373,11 @@ class barchart {
             this.currentlevel = level;
         } else if (shiftup){
             console.log("shiftup");
-            if (this.allsortfn !== null && this.sortorder.orderedColumnId !== 0){
-                this.shiftdomain(transitiondomain);
-                //i have no idea why we need to reverse the x domain here
-                //newXdomain//.reverse();
-                xtransdelay   += 1000;
-                ytransdelay   += 1000;
-                bartransdelay += 1000;
+            if (this.allsortfn !== null && this.sortorder.orderedColumnId !== "date"){
+                let delay = this.shiftdomain(transitiondomain);
+                xtransdelay   += 1000 + delay;
+                ytransdelay   += 1000 + delay;
+                bartransdelay += 1000 + delay;
             }
             this.yScale.domain([Math.max.apply(null, withdrawal.map(d => d.end)),0]).nice();
             this.xScale.domain(newXdomain);
@@ -312,11 +410,12 @@ class barchart {
         } else {
             console.log('shiftdown');
             this.yScale.domain([Math.max.apply(null, withdrawal.map(d => d.end)),0]).nice();
-            console.log( this.sortorder.orderedColumnId);
-            console.log(this.sortorder.orderDirection);
-            console.log(this.sortorder);
-            var newdomain = this.allsortfn === null || this.sortorder.orderedColumnId === 0 ? newXdomain : transitiondomain;
+            console.log(transitiondomain);
+            var newdomain =  transitiondomain;
 
+            //var newdomain =
+            //this.allsortfn === null || (this.sortorder.orderedColumnId === "date") && (level.code < 3) ? newXdomain : transitiondomain;
+            //|| (this.sortorder.orderedColumnId === "date")
             this.xScale.domain(newdomain);
             this.xaxis.scale(this.xScale);
             this.yaxis.scale(this.yScale);
@@ -329,7 +428,8 @@ class barchart {
                 .duration(1000)
                 .call(this.yaxis);
 
-            this.bargroup.selectAll("rect")
+            this.bargroup
+                .selectAll("rect")
                 .data(withdrawal, d => d.transaction_id)
                 .transition()
                 .duration(1000)
@@ -339,9 +439,9 @@ class barchart {
                 .duration(1000)
                 .attr('y', function (d) {return this.yScale(d.end)}.bind(this))
                 .attr('height', function (d){return Math.abs(this.yScale(d.start) - this.yScale(d.end))}.bind(this));
-
+            // reset sort function for sort by category or sort by name
             this.currentlevel = level;
-            if (this.allsortfn !== null && this.sortorder.orderedColumnId !== 0){
+            if (this.allsortfn !== null && this.sortorder.orderedColumnId !== "date"){
                 console.log("all sort function");
                 this.sortdata_all(this.allsortfn, this.sortorder,2000);
             }
@@ -356,22 +456,20 @@ class barchart {
         // sortfn will take in two array of the groups
         // a null input will cause the function to be sort chronologically (default)
         // delay will execute animation with optional second of delay
+        console.log("Sorting data");
         var groupcallback = this.currentlevel.callback;
         var sorteddata = d3.nest()
             .key(groupcallback)
             .entries(this.withdrawal);
+        console.log("BEFORE", sorteddata);
         if (sortfn !== null){
-            sorteddata = sorteddata.sort((a,b) => sortfn(a.values, b.values))
-        } //else {
-            // sort chronologically
-            //sorteddata.reverse();
-        //}
-        this.shiftdomain(sorteddata.map(d => d.key), delay, instant);
+            sorteddata = sorteddata.sort((a,b) => sortfn(a.values, b.values));
+            console.log("AFTER",sorteddata);
+        }
+        let sorttime = this.shiftdomain(sorteddata.map(d => d.key), delay, instant);
         this.sortorder = orderchange;
         this.allsortfn = sortfn;
-
-        console.log("ORDER CHANGE");
-        console.log(this);
+        return sorttime
     }
 
     sortdata_grouped(sortfn){
@@ -457,8 +555,14 @@ class barchart {
             .attr('height', function (d){return Math.abs(this.yScale(d.start) - this.yScale(d.end))}.bind(this));
     }
     switchscale(scale){
-        this.yScale = scale;
+        this.yScale = scale
+            .domain([Math.max.apply(null, this.withdrawal.map(d => d.amount)), 0])
+            .range([0, this.height])
+            .nice();
         this.yaxis.scale(this.yScale);
+        console.log("SWITCH SCALE");
+        console.log([Math.max.apply(null, this.withdrawal.map(d => d.amount)), 0]);
+        console.log(this.yScale(10));
         this.yContainer
             .transition()
             .duration(1000)
@@ -466,8 +570,13 @@ class barchart {
         this.bargroup.selectAll("rect")
             .transition()
             .duration(1000)
-            .attr('y', function(d) {return this.yScale(d.end)}.bind(this))
-            .attr('height', function (d){return Math.abs(this.yScale(d.start) - this.yScale(d.end))}.bind(this));
+            .attr('y', function(d) {
+                console.log(this.yScale(d.end));
+                return this.yScale(d.end)}.bind(this))
+            .attr('height', function (d){
+                console.log(d);
+                console.log(this.yScale(d.end) - this.yScale(d.start));
+                return Math.abs(this.yScale(d.start) - this.yScale(d.end))}.bind(this));
     }
 
     updatedata(filterfn){
@@ -651,8 +760,9 @@ class barchart {
             this.container.selectAll("rect").style("opacity", 0)
         }
         if (this.allsortfn !== null){
-           // this.sortdata_all(this.allsortfn, 4000);
+           this.sortdata_all(this.allsortfn, this.sortorder,4000);
         }
+        this.attachevent();
     }
 }
 
@@ -662,6 +772,8 @@ var barchartlevels = {
     daily: {code:1, callback: d => d.date, name: "daily"},
     weekly: {code:2, callback: d => moment(d.date, 'YYYY-MM-DD').format('YYYY/') + "W" + moment(d.date, 'YYYY-MM-DD').format('ww'), name: "weekly"},
     monthly: {code:3, callback: d => moment(d.date, 'YYYY-MM-DD').format('YYYY MMM'), name: "monthly"},
+    category: {code:4, callback: d => d.category[0], name: "category"},
+    name: {code:5, callback: d => d.name, name: "name"}
 };
 //barchart.generatedevent = {
 //    legendchange : 0
